@@ -1,0 +1,69 @@
+{
+  "name": "node-carplay",
+  "version": "4.3.0",
+  "description": "Carplay dongle driver for Node.js & Browser",
+  "type": "module",
+  "exports": {
+    "./node": "./dist/node/index.js",
+    "./web": "./dist/web/index.js"
+  },
+  "scripts": {
+    "prepare": "npm run build",
+    "start:node": "ts-node --esm ./scripts/startNode.ts",
+    "config:icon": "ts-node --esm ./scripts/configIcon.ts",
+    "test": "jest --silent",
+    "coverage": "jest --silent --coverage",
+    "build:node": "tsc --build tsconfig.build.json",
+    "build:web": "tsc --build src/web/tsconfig.json",
+    "build": "npm run build:node && npm run build:web",
+    "build:armLinux": "npm run build",
+    "watch:node": "tsc --build tsconfig.build.json --watch",
+    "watch:web": "tsc --build src/web/tsconfig.json --watch",
+    "watch": "npm run watch:node & npm run watch:web",
+    "clean:node": "tsc --build tsconfig.build.json --clean",
+    "clean:web": "tsc --build src/web/tsconfig.json --clean",
+    "clean": "npm run clean:node && npm run clean:web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --ext .js,.ts,.tsx .",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|tsx|json)\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/f-io/node-CarPlay.git"
+  },
+  "author": "rhysmorgan134, f-io",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/f-io/node-CarPlay/issues"
+  },
+  "homepage": "https://github.com/f-io/node-CarPlay#readme",
+  "dependencies": {
+    "node-carplay": "^4.1.0",
+    "node-microphone": "https://github.com/f-io/node-microphone.git",
+    "usb": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/audioworklet": "^0.0.75",
+    "@types/jest": "^29.5.4",
+    "@types/node": "^20.17.32",
+    "@types/node-microphone": "^0.1.1",
+    "@types/w3c-web-usb": "^1.0.10",
+    "@types/webaudioapi": "^0.0.27",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-import": "^2.28.1",
+    "glob": "^11.0.2",
+    "jest": "^29.7.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.4.5"
+  },
+  "files": [
+    "*.md",
+    "dist/"
+  ]
+}

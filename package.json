@@ -38,7 +38,6 @@
   },
   "homepage": "https://github.com/f-io/node-CarPlay#readme",
   "dependencies": {
-    "node-carplay": "^4.1.0",
     "node-microphone": "https://github.com/f-io/node-microphone.git",
     "usb": "^2.15.0"
   },

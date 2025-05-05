@@ -44,7 +44,7 @@
   "devDependencies": {
     "@types/audioworklet": "^0.0.75",
     "@types/jest": "^29.5.4",
-    "@types/node": "^20.17.32",
+    "@types/node": "^22.15.3",
     "@types/node-microphone": "^0.1.1",
     "@types/w3c-web-usb": "^1.0.10",
     "@types/webaudioapi": "^0.0.27",

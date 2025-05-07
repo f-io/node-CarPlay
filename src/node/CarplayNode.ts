@@ -1,4 +1,4 @@
-import { webusb } from 'usb'
+import usb from 'usb'
 import NodeMicrophone from './NodeMicrophone.js'
 import {
   AudioData,
@@ -18,7 +18,7 @@ import {
   AudioCommand,
 } from '../modules/index.js'
 
-const USB_WAIT_PERIOD_MS = 3000
+const USB_WAIT_PERIOD_MS = 1000 // enumeration time system dependent!
 
 export type CarplayMessage =
   | { type: 'plugged'; message?: undefined }
@@ -52,7 +52,7 @@ export default class CarplayNode {
             () => {
               this.dongleDriver.send(new SendCommand('frame'))
             },
-            phoneTypeConfg?.frameInterval,
+            phoneTypeConfg.frameInterval,
           )
         }
         this.onmessage?.({ type: 'plugged' })
@@ -71,7 +71,6 @@ export default class CarplayNode {
         this.onmessage?.({ type: 'command', message })
       }
 
-      // Trigger internal event logic
       if (message instanceof AudioData && message.command != null) {
         switch (message.command) {
           case AudioCommand.AudioSiriStart:
@@ -91,45 +90,41 @@ export default class CarplayNode {
     this.dongleDriver = driver
   }
 
-  private async findDevice() {
-    let device: USBDevice | null = null
-
-    while (device == null) {
-      try {
-        device = await webusb.requestDevice({
-          filters: DongleDriver.knownDevices,
-        })
-      } catch (err) {
-        // ^ requestDevice throws an error when no device is found, so keep retrying
-      }
-
-      if (device == null) {
-        console.log('No device found, retrying')
-        await new Promise(resolve => setTimeout(resolve, USB_WAIT_PERIOD_MS))
-      }
+  // Polling
+  private async findDevice(): Promise<usb.Device> {
+    while (true) {
+      const devices = usb.getDeviceList()
+      const found = devices.find(d =>
+        DongleDriver.knownDevices.some(k =>
+          d.deviceDescriptor.idVendor === k.vendorId &&
+          d.deviceDescriptor.idProduct === k.productId
+        )
+      )
+      if (found) return found
+      console.log('No device found, retrying...')
+      await new Promise(res => setTimeout(res, USB_WAIT_PERIOD_MS))
     }
-
-    return device
   }
 
   start = async () => {
-    // Find device to "reset" first
+    // Find & reset device
     let device = await this.findDevice()
-    await device.open()
-    await device.reset()
-    await device.close()
-    // Resetting the device causes an unplug event in node-usb
-    // so subsequent writes fail with LIBUSB_ERROR_NO_DEVICE
-    // or LIBUSB_TRANSFER_ERROR
+    device.open()
+    await new Promise<void>(res => {
+      // Node-USB reset(callback)
+      device.reset(err => {
+        if (err) console.error('Reset error', err)
+        res()
+      })
+    })
+    device.close()
 
     console.log('Reset device, finding again...')
-    await new Promise(resolve => setTimeout(resolve, USB_WAIT_PERIOD_MS))
-    // ^ Device disappears after reset for 1-3 seconds
+    await new Promise(res => setTimeout(res, USB_WAIT_PERIOD_MS))
 
     device = await this.findDevice()
-    console.log('found & opening')
-
-    await device.open()
+    console.log('Found & opening')
+    device.open()
 
     let initialised = false
     try {
@@ -137,7 +132,7 @@ export default class CarplayNode {
       await initialise(device)
       await start(this._config)
       this._pairTimeout = setTimeout(() => {
-        console.debug('no device, sending pair')
+        console.debug('No device initialised, sending wifiPair')
         send(new SendCommand('wifiPair'))
       }, 15000)
       initialised = true
@@ -146,7 +141,7 @@ export default class CarplayNode {
     }
 
     if (!initialised) {
-      console.log('carplay not initialised, retrying in 2s')
+      console.log('CarPlay not initialised, retrying, retry in 2s')
       setTimeout(this.start, 2000)
     }
   }
@@ -171,13 +166,14 @@ export default class CarplayNode {
   private clearFrameInterval() {
     if (this._frameInterval) {
       clearInterval(this._frameInterval)
-      this._pairTimeout = null
+      this._frameInterval = null
     }
   }
 
   sendKey = (action: CommandValue) => {
     this.dongleDriver.send(new SendCommand(action))
   }
+
   sendTouch = ({ type, x, y }: { type: number; x: number; y: number }) => {
     this.dongleDriver.send(new SendTouch(x, y, type))
   }

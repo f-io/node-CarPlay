@@ -1,3 +1,4 @@
+import usb from 'usb'
 import {
   Message,
   Plugged,
@@ -12,8 +13,6 @@ import {
   DEFAULT_CONFIG,
 } from '../modules/index.js'
 
-const { knownDevices } = DongleDriver
-
 export type CarplayMessage =
   | { type: 'plugged'; message?: undefined }
   | { type: 'unplugged'; message?: undefined }
@@ -23,82 +22,72 @@ export type CarplayMessage =
   | { type: 'media'; message: MediaData }
   | { type: 'command'; message: Command }
 
-export const isCarplayDongle = (device: USBDevice) => {
-  const known = knownDevices.some(
-    kd => kd.productId === device.productId && kd.vendorId === device.vendorId,
+const USB_WAIT_PERIOD_MS = 1000
+
+export const isCarplayDongle = (device: usb.Device): boolean => {
+  const { idVendor, idProduct } = device.deviceDescriptor
+  return DongleDriver.knownDevices.some(
+    kd => kd.vendorId === idVendor && kd.productId === idProduct
   )
-  return known
 }
 
-export const findDevice = async (): Promise<USBDevice | null> => {
-  try {
-    const devices = await navigator.usb.getDevices()
-    return (
-      devices.find(d => {
-        return isCarplayDongle(d) ? d : undefined
-      }) || null
-    )
-  } catch (err) {
-    return null
+export const findDevice = async (): Promise<usb.Device | null> => {
+  while (true) {
+    const devices = usb.getDeviceList()
+    const found = devices.find(isCarplayDongle)
+    if (found) return found
+    await new Promise(res => setTimeout(res, USB_WAIT_PERIOD_MS))
   }
 }
 
-export const requestDevice = async (): Promise<USBDevice | null> => {
-  try {
-    const { knownDevices } = DongleDriver
-    const device = await navigator.usb.requestDevice({
-      filters: knownDevices,
-    })
-    return device
-  } catch (err) {
-    return null
-  }
-}
+// alias for consistency with previous API
+export const requestDevice = findDevice
 
 export default class CarplayWeb {
-  private _started: boolean = false
+  private _started = false
   private _pairTimeout: NodeJS.Timeout | null = null
-  private _frameInterval: ReturnType<typeof setInterval> | null = null
+  private _frameInterval: NodeJS.Timeout | null = null
   private _config: DongleConfig
   public dongleDriver: DongleDriver
 
   constructor(config: Partial<DongleConfig>) {
     this._config = Object.assign({}, DEFAULT_CONFIG, config)
     const driver = new DongleDriver()
-    driver.on('message', (message: Message) => {
-      if (message instanceof Plugged) {
-        this.clearPairTimeout()
-        this.clearFrameInterval()
+    driver.on('message', (message: Message) => this.handleMessage(message))
+    driver.on('failure', () => this.onmessage?.({ type: 'failure' }))
+    this.dongleDriver = driver
+  }
 
-        const phoneTypeConfg = this._config.phoneConfig[message.phoneType]
-        if (phoneTypeConfg?.frameInterval) {
+  private handleMessage(message: Message) {
+    this.clearPairTimeout()
+    switch (true) {
+      case message instanceof Plugged: {
+        const phoneCfg = this._config.phoneConfig[message.phoneType]
+        if (phoneCfg?.frameInterval) {
           this._frameInterval = setInterval(
-            () => {
-              this.dongleDriver.send(new SendCommand('frame'))
-            },
-            phoneTypeConfg?.frameInterval,
+            () => this.dongleDriver.send(new SendCommand('frame')),
+            phoneCfg.frameInterval
           )
         }
         this.onmessage?.({ type: 'plugged' })
-      } else if (message instanceof Unplugged) {
-        this.onmessage?.({ type: 'unplugged' })
-      } else if (message instanceof VideoData) {
-        this.clearPairTimeout()
-        this.onmessage?.({ type: 'video', message })
-      } else if (message instanceof AudioData) {
-        this.clearPairTimeout()
-        this.onmessage?.({ type: 'audio', message })
-      } else if (message instanceof MediaData) {
-        this.clearPairTimeout()
-        this.onmessage?.({ type: 'media', message })
-      } else if (message instanceof Command) {
-        this.onmessage?.({ type: 'command', message })
+        break
       }
-    })
-    driver.on('failure', () => {
-      this.onmessage?.({ type: 'failure' })
-    })
-    this.dongleDriver = driver
+      case message instanceof Unplugged:
+        this.onmessage?.({ type: 'unplugged' })
+        break
+      case message instanceof VideoData:
+        this.onmessage?.({ type: 'video', message })
+        break
+      case message instanceof AudioData:
+        this.onmessage?.({ type: 'audio', message })
+        break
+      case message instanceof MediaData:
+        this.onmessage?.({ type: 'media', message })
+        break
+      case message instanceof Command:
+        this.onmessage?.({ type: 'command', message })
+        break
+    }
   }
 
   private clearPairTimeout() {
@@ -111,30 +100,28 @@ export default class CarplayWeb {
   private clearFrameInterval() {
     if (this._frameInterval) {
       clearInterval(this._frameInterval)
-      this._pairTimeout = null
+      this._frameInterval = null
     }
   }
 
   public onmessage: ((ev: CarplayMessage) => void) | null = null
 
-  start = async (usbDevice: USBDevice) => {
+  public start = async () => {
     if (this._started) return
-    const { initialise, start, send } = this.dongleDriver
-
+    const device = await findDevice()
     console.debug('opening device')
-    await usbDevice.open()
-    await usbDevice.reset()
-
-    await initialise(usbDevice)
-    await start(this._config)
-    this._pairTimeout = setTimeout(() => {
-      console.debug('no device, sending pair')
-      send(new SendCommand('wifiPair'))
-    }, 15000)
+    device.open()
+    await new Promise<void>(res => device.reset(err => res()))
+    await this.dongleDriver.initialise(device)
+    await this.dongleDriver.start(this._config)
+    this._pairTimeout = setTimeout(
+      () => this.dongleDriver.send(new SendCommand('wifiPair')),
+      15000
+    )
     this._started = true
   }
 
-  stop = async () => {
+  public stop = async () => {
     try {
       this.clearFrameInterval()
       this.clearPairTimeout()

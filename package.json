@@ -1,6 +1,6 @@
 {
   "name": "node-carplay",
-  "version": "4.3.0",
+  "version": "1.0.0",
   "description": "Carplay dongle driver for Node.js & Browser",
   "type": "module",
   "exports": {
@@ -29,14 +29,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/f-io/node-CarPlay.git"
+    "url": "git+https://github.com/f-io/node-carplay.git"
   },
   "author": "rhysmorgan134, f-io",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/f-io/node-CarPlay/issues"
+    "url": "https://github.com/f-io/node-carplay/issues"
   },
-  "homepage": "https://github.com/f-io/node-CarPlay#readme",
+  "homepage": "https://github.com/f-io/node-carplay#readme",
   "dependencies": {
     "node-microphone": "https://github.com/f-io/node-microphone.git",
     "usb": "^2.15.0"

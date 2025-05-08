@@ -90,7 +90,7 @@ export default class CarplayNode {
     this.dongleDriver = driver
   }
 
-  // Polling
+  /** Polling **/
   private async findDevice(): Promise<usb.Device> {
     while (true) {
       const devices = usb.getDeviceList()
@@ -141,7 +141,7 @@ export default class CarplayNode {
     }
 
     if (!initialised) {
-      console.log('CarPlay not initialised, retrying, retry in 2s')
+      console.log('CarPlay nicht initialisiert, retry in 2s')
       setTimeout(this.start, 2000)
     }
   }

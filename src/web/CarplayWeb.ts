@@ -31,7 +31,7 @@ export const isCarplayDongle = (device: usb.Device): boolean => {
   )
 }
 
-export const findDevice = async (): Promise<usb.Device | null> => {
+export const findDevice = async (): Promise<usb.Device> => {
   while (true) {
     const devices = usb.getDeviceList()
     const found = devices.find(isCarplayDongle)

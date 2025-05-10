@@ -4,8 +4,7 @@
   "description": "Carplay dongle driver for Node.js & Browser",
   "type": "module",
   "exports": {
-    "./node": "./dist/node/index.js",
-    "./web": "./dist/web/index.js"
+    "./node": "./dist/node/index.js"
   },
   "scripts": {
     "prepare": "npm run build",
@@ -14,15 +13,12 @@
     "test": "jest --silent",
     "coverage": "jest --silent --coverage",
     "build:node": "tsc --build tsconfig.build.json",
-    "build:web": "tsc --build src/web/tsconfig.json",
-    "build": "npm run build:node && npm run build:web",
+    "build": "npm run build:node",
     "build:armLinux": "npm run build",
     "watch:node": "tsc --build tsconfig.build.json --watch",
-    "watch:web": "tsc --build src/web/tsconfig.json --watch",
-    "watch": "npm run watch:node & npm run watch:web",
+    "watch": "npm run watch:node",
     "clean:node": "tsc --build tsconfig.build.json --clean",
-    "clean:web": "tsc --build src/web/tsconfig.json --clean",
-    "clean": "npm run clean:node && npm run clean:web",
+    "clean": "npm run clean:node",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --ext .js,.ts,.tsx .",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|tsx|json)\""
@@ -46,7 +42,6 @@
     "@types/jest": "^29.5.4",
     "@types/node": "^22.15.3",
     "@types/node-microphone": "^0.1.1",
-    "@types/w3c-web-usb": "^1.0.10",
     "@types/webaudioapi": "^0.0.27",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
